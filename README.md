@@ -1,4 +1,4 @@
-# Date Dimension
+## Date Dimension (No More Date Math - Ever)
 
 A date dimension is vital if you do any reporting especially from a data warehouse. It is easier to use already calculated attributes about a specific date than to have to calcuate the attributes in the reporting environment. Also, a date dimension can store attributes for Fiscal Years which most reporting environments are incapble of calculating.
 
