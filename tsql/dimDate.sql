@@ -1,23 +1,3 @@
-DROP VIEW IF EXISTS dim.[Date]
-GO
-
-/****************************************************************************
-NAME:	    dim.Date
-AUTHOR:     Eric Kofoid
-CREATED:    3/6/2017
-DESC:       Returns 1 row per day with many attributes about that day
-            The attributes are documented in the code
-            Requires a base table named dim.BaseDate
-              The code to create this table is found in dim.BaseDate.sql gist
-EXEC:
-            SELECT TOP 100 * FROM dim.[Date] WHERE  ORDER BY ThisDate
-HISTORY:
-DATE        PERSON          DESCRIPTION
-3/6/2017	Eric Kofoid     Initial build
-****************************************************************************/
-CREATE VIEW dim.Date
-AS
-
 --#region Relative Periods
 -- Rankings for Relative Calculations
 WITH RelativePeriods AS (
@@ -366,4 +346,3 @@ FROM
 			dim.BaseDate    D
 INNER JOIN	RelativePeriods	RP  ON	D.ID = RP.ID
 CROSS JOIN	Today			T
-GO
