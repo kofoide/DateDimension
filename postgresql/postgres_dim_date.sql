@@ -1,15 +1,51 @@
+drop view if exists warehouse.money.tag_months;
+drop view if exists warehouse.money.stg_am__dim_date;
+drop view if exists dim_date;
+
+create view dim_date
+as
+
 with gs as (
     select
         the_date::date
-    from generate_series('2022-01-01', '2025-12-31', interval '1 day') as s(the_date)
-)
+    from generate_series('2024-01-01', '2027-12-31', interval '1 day') as s(the_date)
+) --select * from gs;
 ,
 
 -- This should probably be a table in your system
 holiday as (
     select
-        '2022-12-25'::date as the_date,
+        '2025-5-26'::date as the_date,
+        'Memorial Day'::varchar(100) as holiday
+    union
+    select
+        '2025-7-4'::date as the_date,
+        'Independence Day'::varchar(100) as holiday
+    union
+    select
+        '2025-9-7'::date as the_date,
+        'Labor Day'::varchar(100) as holiday
+    union
+    select
+        '2025-10-12'::date as the_date,
+        'Columbus Day'::varchar(100) as holiday
+    union
+    select
+        '2025-11-11'::date as the_date,
+        'Veterans Day'::varchar(100) as holiday
+    union
+    select
+        '2025-11-27'::date as the_date,
+        'Thanksgiving'::varchar(100) as holiday
+    union
+    select
+        '2025-12-25'::date as the_date,
         'X-mas'::varchar(100) as holiday
+    union
+    select
+        '2026-01-01'::date as the_date,
+        'New Year'::varchar(100) as holiday
+
 )
 ,
 
@@ -47,7 +83,7 @@ basic as (
     from
         gs as b
         left join holiday as h on b.the_date = h.the_date
-)
+) --select * from basic;
 ,
 
 base as (
@@ -69,7 +105,7 @@ base as (
             else 1
         end as business_day_int
     from basic as b
-)
+) --select * from base;
 ,
 
 relative_period as (
@@ -80,7 +116,7 @@ relative_period as (
         dense_rank() over(order by year_int, month_of_year_int) as month_rank,
         dense_rank() over(order by year_int, week_iso_of_year_int) as week_iso_rank
     from base
-)
+) --select * from relative_period;
 
 , today as (
 select
@@ -104,7 +140,7 @@ from
     inner join relative_period as rp on today.the_date = rp.the_date
 where
     today.the_date = current_date
-)
+) --select * from today;
 ,
 
 setup as (
@@ -183,9 +219,12 @@ select
 
 -- *******************************
 -- MONTH
+    to_char(b.the_date, 'Month') AS month_of_year_name,
+    left(to_char(b.the_date, 'Month'), 3) AS month_of_year_name_abbreviation,
     b.month_of_year_int,
     b.month_of_year_string,
 
+    (rp.month_rank - t.today_month_rank) as month_relative_int,
     case
         when (rp.month_rank - t.today_month_rank) = 0 then 'Current Month'
         when (rp.month_rank - t.today_month_rank) = -1 then ' Previous Month'
@@ -211,21 +250,25 @@ select
     b.day_of_month_int,
     b.day_of_week_int,
 
-    (t.today_date - b.the_date) * -1 as day_relative_int,
+--    (t.today_date - b.the_date) * -1 as day_relative_int,
 
     -- Calendar Year Day
     -- Using today as the target, is the_date in the Calendar YTD zone
-    make_date(t.today_year_int, b.month_of_year_int, b.day_of_month_int) <= t.today_date as is_calendar_ytd,
+--    make_date(t.today_year_int, b.month_of_year_int, b.day_of_month_int) <= t.today_date as is_calendar_ytd,
     -- number of buseinss days that have gone by this calendar year
-    sum(b.business_day_int) over(partition by b.year_int order by b.the_date rows between unbounded preceding and current row) as calendar_year_business_days_passed,
-    -- number of business days remaining this calendar year
-    sum(b.business_day_int) over(partition by b.year_int order by b.the_date rows between current row and unbounded following) as calendar_year_business_days_remaining,
+--    sum(b.business_day_int) over(partition by b.year_int order by b.the_date rows between unbounded preceding and current row) as calendar_year_business_days_passed,
+--    -- number of business days remaining this calendar year
+--    sum(b.business_day_int) over(partition by b.year_int order by b.the_date rows between current row and unbounded following) as calendar_year_business_days_remaining,
 
     -- Quarter Day
-    make_date(t.today_year_int, b.month_of_year_int, b.day_of_month_int) <= t.today_date and t.today_quarter_of_year_int = b.quarter_of_year_int as is_quarter_ytd,
+--        make_date(t.today_year_int, b.month_of_year_int, b.day_of_month_int) <= t.today_date 
+--    and t.today_quarter_of_year_int = b.quarter_of_year_int
+--        as is_quarter_ytd,
     sum(b.business_day_int) over(partition by rp.quarter_rank order by b.the_date rows between unbounded preceding and current row) as quarter_business_days_passed,
-    sum(b.business_day_int) over(partition by rp.quarter_rank order by b.the_date rows between current row and unbounded following) as quarter_business_days_remaining
+    sum(b.business_day_int) over(partition by rp.quarter_rank order by b.the_date rows between current row and unbounded following) as quarter_business_days_remaining,
 -- *******************************
+
+    null as last_column
 from
     base as b
     inner join relative_period as rp on b.the_date = rp.the_date
